@@ -3,12 +3,31 @@
 [OPTIMIZE 1]
 [OPTION 1]
 [BITS 32]
+	EXTERN	_font_A.0
 	EXTERN	_io_hlt
 	EXTERN	_io_load_eflags
 	EXTERN	_io_cli
 	EXTERN	_io_out8
 	EXTERN	_io_store_eflags
 [FILE "bootpack.c"]
+[SECTION .data]
+_font_A.0:
+	DB	0
+	DB	24
+	DB	24
+	DB	24
+	DB	24
+	DB	36
+	DB	36
+	DB	36
+	DB	36
+	DB	126
+	DB	66
+	DB	66
+	DB	66
+	DB	-25
+	DB	0
+	DB	0
 [SECTION .text]
 	GLOBAL	_HariMain
 _HariMain:
@@ -16,17 +35,25 @@ _HariMain:
 	MOV	EBP,ESP
 	CALL	_init_palette
 	MOVSX	EAX,WORD [4086]
-	MOVSX	EDX,WORD [4084]
 	PUSH	EAX
-	PUSH	EDX
+	MOVSX	EAX,WORD [4084]
+	PUSH	EAX
 	PUSH	DWORD [4088]
 	CALL	_init_screen
-	ADD	ESP,12
+	PUSH	_font_A.0
+	PUSH	7
+	PUSH	10
+	PUSH	10
+	MOVSX	EAX,WORD [4084]
+	PUSH	EAX
+	PUSH	DWORD [4088]
+	CALL	_putfont8
+	ADD	ESP,36
 L2:
 	CALL	_io_hlt
 	JMP	L2
 [SECTION .data]
-_table_rgb.0:
+_table_rgb.1:
 	DB	0
 	DB	0
 	DB	0
@@ -80,7 +107,7 @@ _table_rgb.0:
 _init_palette:
 	PUSH	EBP
 	MOV	EBP,ESP
-	PUSH	_table_rgb.0
+	PUSH	_table_rgb.1
 	PUSH	15
 	PUSH	0
 	CALL	_set_palette
@@ -346,6 +373,50 @@ _init_screen:
 	PUSH	DWORD [8+EBP]
 	CALL	_boxfill8
 	LEA	ESP,DWORD [-12+EBP]
+	POP	EBX
+	POP	ESI
+	POP	EDI
+	POP	EBP
+	RET
+	GLOBAL	_putfont8
+_putfont8:
+	PUSH	EBP
+	XOR	EDX,EDX
+	MOV	EBP,ESP
+	PUSH	EDI
+	PUSH	ESI
+	PUSH	EBX
+	SUB	ESP,12
+	MOV	AL,BYTE [24+EBP]
+	MOV	EDI,DWORD [28+EBP]
+	MOV	BYTE [-13+EBP],AL
+L41:
+	MOV	EAX,DWORD [20+EBP]
+	MOV	ECX,DWORD [16+EBP]
+	ADD	EAX,EDX
+	MOV	BL,BYTE [EDX+EDI*1]
+	IMUL	EAX,DWORD [12+EBP]
+	ADD	EAX,DWORD [8+EBP]
+	MOV	BYTE [-21+EBP],BL
+	LEA	ESI,DWORD [ECX+EAX*1]
+	XOR	ECX,ECX
+L40:
+	MOVSX	EAX,BYTE [-21+EBP]
+	SAR	EAX,CL
+	AND	EAX,1
+	JE	L37
+	MOV	EAX,ESI
+	MOV	BL,BYTE [-13+EBP]
+	SUB	EAX,ECX
+	MOV	BYTE [7+EAX],BL
+L37:
+	INC	ECX
+	CMP	ECX,7
+	JLE	L40
+	INC	EDX
+	CMP	EDX,15
+	JLE	L41
+	ADD	ESP,12
 	POP	EBX
 	POP	ESI
 	POP	EDI

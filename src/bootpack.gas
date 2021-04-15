@@ -1,4 +1,22 @@
 	.file	"bootpack.c"
+	.data
+_font_A.0:
+	.byte	0
+	.byte	24
+	.byte	24
+	.byte	24
+	.byte	24
+	.byte	36
+	.byte	36
+	.byte	36
+	.byte	36
+	.byte	126
+	.byte	66
+	.byte	66
+	.byte	66
+	.byte	-25
+	.byte	0
+	.byte	0
 	.text
 	.balign 2
 .globl _HariMain
@@ -8,17 +26,25 @@ _HariMain:
 	movl	%esp, %ebp
 	call	_init_palette
 	movswl	4086,%eax
-	movswl	4084,%edx
 	pushl	%eax
-	pushl	%edx
+	movswl	4084,%eax
+	pushl	%eax
 	pushl	4088
 	call	_init_screen
-	addl	$12, %esp
+	pushl	$_font_A.0
+	pushl	$7
+	pushl	$10
+	pushl	$10
+	movswl	4084,%eax
+	pushl	%eax
+	pushl	4088
+	call	_putfont8
+	addl	$36, %esp
 L2:
 	call	_io_hlt
 	jmp	L2
 	.data
-_table_rgb.0:
+_table_rgb.1:
 	.byte	0
 	.byte	0
 	.byte	0
@@ -74,7 +100,7 @@ _table_rgb.0:
 _init_palette:
 	pushl	%ebp
 	movl	%esp, %ebp
-	pushl	$_table_rgb.0
+	pushl	$_table_rgb.1
 	pushl	$15
 	pushl	$0
 	call	_set_palette
@@ -351,11 +377,58 @@ _init_screen:
 	popl	%edi
 	popl	%ebp
 	ret
+	.balign 2
+.globl _putfont8
+	.def	_putfont8;	.scl	2;	.type	32;	.endef
+_putfont8:
+	pushl	%ebp
+	xorl	%edx, %edx
+	movl	%esp, %ebp
+	pushl	%edi
+	pushl	%esi
+	pushl	%ebx
+	subl	$12, %esp
+	movb	24(%ebp), %al
+	movl	28(%ebp), %edi
+	movb	%al, -13(%ebp)
+L41:
+	movl	20(%ebp), %eax
+	movl	16(%ebp), %ecx
+	addl	%edx, %eax
+	movb	(%edx,%edi), %bl
+	imull	12(%ebp), %eax
+	addl	8(%ebp), %eax
+	movb	%bl, -21(%ebp)
+	leal	(%ecx,%eax), %esi
+	xorl	%ecx, %ecx
+L40:
+	movsbl	-21(%ebp),%eax
+	sarl	%cl, %eax
+	andl	$1, %eax
+	je	L37
+	movl	%esi, %eax
+	movb	-13(%ebp), %bl
+	subl	%ecx, %eax
+	movb	%bl, 7(%eax)
+L37:
+	incl	%ecx
+	cmpl	$7, %ecx
+	jle	L40
+	incl	%edx
+	cmpl	$15, %edx
+	jle	L41
+	addl	$12, %esp
+	popl	%ebx
+	popl	%esi
+	popl	%edi
+	popl	%ebp
+	ret
 	.def	_io_store_eflags;	.scl	2;	.type	32;	.endef
 	.def	_io_out8;	.scl	2;	.type	32;	.endef
 	.def	_io_cli;	.scl	2;	.type	32;	.endef
 	.def	_io_load_eflags;	.scl	2;	.type	32;	.endef
 	.def	_set_palette;	.scl	2;	.type	32;	.endef
 	.def	_io_hlt;	.scl	2;	.type	32;	.endef
+	.def	_putfont8;	.scl	2;	.type	32;	.endef
 	.def	_init_screen;	.scl	2;	.type	32;	.endef
 	.def	_init_palette;	.scl	2;	.type	32;	.endef
