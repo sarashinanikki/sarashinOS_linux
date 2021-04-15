@@ -2,6 +2,8 @@
 	.data
 LC0:
 	.ascii "sarashinOS\0"
+LC1:
+	.ascii "scrnx = %d\0"
 	.text
 	.balign 2
 .globl _HariMain
@@ -9,6 +11,9 @@ LC0:
 _HariMain:
 	pushl	%ebp
 	movl	%esp, %ebp
+	pushl	%ebx
+	subl	$48, %esp
+	leal	-52(%ebp), %ebx
 	call	_init_palette
 	movswl	4086,%eax
 	pushl	%eax
@@ -18,14 +23,28 @@ _HariMain:
 	call	_init_screen
 	pushl	$LC0
 	pushl	$0
-	pushl	$81
-	pushl	$121
+	pushl	$21
+	pushl	$21
 	movswl	4084,%eax
 	pushl	%eax
 	pushl	4088
 	call	_putfont8_asc
 	addl	$36, %esp
 	pushl	$LC0
+	pushl	$7
+	pushl	$20
+	pushl	$20
+	movswl	4084,%eax
+	pushl	%eax
+	pushl	4088
+	call	_putfont8_asc
+	movswl	4084,%eax
+	pushl	%eax
+	pushl	$LC1
+	pushl	%ebx
+	call	_sprintf
+	addl	$36, %esp
+	pushl	%ebx
 	pushl	$7
 	pushl	$80
 	pushl	$120
@@ -465,6 +484,7 @@ L51:
 	.def	_io_load_eflags;	.scl	2;	.type	32;	.endef
 	.def	_set_palette;	.scl	2;	.type	32;	.endef
 	.def	_io_hlt;	.scl	2;	.type	32;	.endef
+	.def	_sprintf;	.scl	2;	.type	32;	.endef
 	.def	_putfont8_asc;	.scl	2;	.type	32;	.endef
 	.def	_init_screen;	.scl	2;	.type	32;	.endef
 	.def	_init_palette;	.scl	2;	.type	32;	.endef

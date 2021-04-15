@@ -3,6 +3,7 @@
 [OPTIMIZE 1]
 [OPTION 1]
 [BITS 32]
+	EXTERN	_sprintf
 	EXTERN	_io_hlt
 	EXTERN	_io_load_eflags
 	EXTERN	_io_cli
@@ -13,11 +14,16 @@
 [SECTION .data]
 LC0:
 	DB	"sarashinOS",0x00
+LC1:
+	DB	"scrnx = %d",0x00
 [SECTION .text]
 	GLOBAL	_HariMain
 _HariMain:
 	PUSH	EBP
 	MOV	EBP,ESP
+	PUSH	EBX
+	SUB	ESP,48
+	LEA	EBX,DWORD [-52+EBP]
 	CALL	_init_palette
 	MOVSX	EAX,WORD [4086]
 	PUSH	EAX
@@ -27,14 +33,28 @@ _HariMain:
 	CALL	_init_screen
 	PUSH	LC0
 	PUSH	0
-	PUSH	81
-	PUSH	121
+	PUSH	21
+	PUSH	21
 	MOVSX	EAX,WORD [4084]
 	PUSH	EAX
 	PUSH	DWORD [4088]
 	CALL	_putfont8_asc
 	ADD	ESP,36
 	PUSH	LC0
+	PUSH	7
+	PUSH	20
+	PUSH	20
+	MOVSX	EAX,WORD [4084]
+	PUSH	EAX
+	PUSH	DWORD [4088]
+	CALL	_putfont8_asc
+	MOVSX	EAX,WORD [4084]
+	PUSH	EAX
+	PUSH	LC1
+	PUSH	EBX
+	CALL	_sprintf
+	ADD	ESP,36
+	PUSH	EBX
 	PUSH	7
 	PUSH	80
 	PUSH	120

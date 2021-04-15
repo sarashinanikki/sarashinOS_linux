@@ -1,3 +1,4 @@
+#include<stdio.h>
 void io_hlt(void);
 void io_cli(void);
 void io_out8(int port, int data);
@@ -37,12 +38,15 @@ struct BOOTINFO {
 void HariMain(void)
 {
 	struct BOOTINFO *binfo = (struct BOOTINFO *) 0x0ff0;
+	char s[40];
 
 	init_palette();
 	init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
 
-	putfont8_asc(binfo->vram, binfo->scrnx, 121, 81, COL8_000000, "sarashinOS");
-	putfont8_asc(binfo->vram, binfo->scrnx, 120, 80, COL8_FFFFFF, "sarashinOS");
+	putfont8_asc(binfo->vram, binfo->scrnx, 21, 21, COL8_000000, "sarashinOS");
+	putfont8_asc(binfo->vram, binfo->scrnx, 20, 20, COL8_FFFFFF, "sarashinOS");
+	sprintf(s, "scrnx = %d", binfo->scrnx);
+	putfont8_asc(binfo->vram, binfo->scrnx, 120, 80, COL8_FFFFFF, s);
 
 	for (;;) {
 		io_hlt();
