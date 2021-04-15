@@ -58,12 +58,14 @@ haribote.img : ipl10.bin haribote.sys Makefile
 
 img :
 	$(MAKE) haribote.img
-	cp haribote.img /mnt/c/Users/ty346549/code/learning/sarashinOS/tolset/src/
 
 run :
 	$(MAKE) img
 	$(COPY) haribote.img ..\z_tools\qemu\fdimage0.bin
 	$(MAKE) -C ../z_tools/qemu
+
+cp :
+	cp haribote.img /mnt/c/Users/ty346549/code/learning/sarashinOS/tolset/src/
 
 clean :
 	-$(DEL) *.bin
