@@ -15,6 +15,7 @@ _HariMain:
 	leal	-316(%ebp), %ebx
 	subl	$304, %esp
 	call	_init_gdtidt
+	call	_init_pic
 	call	_init_palette
 	movswl	4086,%eax
 	pushl	%eax
@@ -74,4 +75,5 @@ L2:
 	.def	_init_mouse_cursor8;	.scl	2;	.type	32;	.endef
 	.def	_init_screen8;	.scl	2;	.type	32;	.endef
 	.def	_init_palette;	.scl	2;	.type	32;	.endef
+	.def	_init_pic;	.scl	2;	.type	32;	.endef
 	.def	_init_gdtidt;	.scl	2;	.type	32;	.endef
