@@ -26,6 +26,8 @@
 [SECTION .data]
 LC0:
 	DB	"(%d, %d)",0x00
+LC2:
+	DB	"%02X %02X %02X",0x00
 LC1:
 	DB	"%02X",0x00
 [SECTION .text]
@@ -37,7 +39,7 @@ _HariMain:
 	PUSH	ESI
 	PUSH	EBX
 	LEA	EBX,DWORD [-316+EBP]
-	SUB	ESP,464
+	SUB	ESP,480
 	CALL	_init_gdtidt
 	CALL	_init_pic
 	CALL	_io_sti
@@ -107,26 +109,28 @@ _HariMain:
 	PUSH	EAX
 	PUSH	DWORD [4088]
 	CALL	_putfonts8_asc
+	LEA	EAX,DWORD [-492+EBP]
 	ADD	ESP,40
+	PUSH	EAX
 	CALL	_enable_mouse
+	POP	EDI
 L2:
 	CALL	_io_cli
 	PUSH	_keyfifo
 	CALL	_fifo8_status
+	PUSH	_mousefifo
+	MOV	EBX,EAX
+	CALL	_fifo8_status
+	LEA	EAX,DWORD [EAX+EBX*1]
+	POP	EBX
 	POP	ESI
 	TEST	EAX,EAX
-	JNE	L5
-	PUSH	_mousefifo
-	CALL	_fifo8_status
-	POP	EBX
-	TEST	EAX,EAX
-	JE	L11
-L5:
+	JE	L12
 	PUSH	_keyfifo
 	CALL	_fifo8_status
 	POP	ECX
 	TEST	EAX,EAX
-	JNE	L12
+	JNE	L13
 	PUSH	_mousefifo
 	CALL	_fifo8_status
 	POP	EDX
@@ -136,13 +140,26 @@ L5:
 	CALL	_fifo8_get
 	MOV	EBX,EAX
 	CALL	_io_sti
-	PUSH	EBX
+	MOVZX	EAX,BL
+	PUSH	EAX
+	LEA	EAX,DWORD [-492+EBP]
+	PUSH	EAX
+	CALL	_mouse_decode
+	ADD	ESP,12
+	DEC	EAX
+	JNE	L2
+	MOVZX	EAX,BYTE [-490+EBP]
+	PUSH	EAX
 	LEA	EBX,DWORD [-60+EBP]
-	PUSH	LC1
+	MOVZX	EAX,BYTE [-491+EBP]
+	PUSH	EAX
+	MOVZX	EAX,BYTE [-492+EBP]
+	PUSH	EAX
+	PUSH	LC2
 	PUSH	EBX
 	CALL	_sprintf
 	PUSH	31
-	PUSH	47
+	PUSH	95
 	PUSH	16
 	PUSH	32
 	PUSH	14
@@ -150,19 +167,19 @@ L5:
 	PUSH	EAX
 	PUSH	DWORD [4088]
 	CALL	_boxfill8
-	ADD	ESP,44
+	ADD	ESP,48
 	PUSH	EBX
 	PUSH	7
 	PUSH	16
 	PUSH	32
-L10:
+L11:
 	MOVSX	EAX,WORD [4084]
 	PUSH	EAX
 	PUSH	DWORD [4088]
 	CALL	_putfonts8_asc
 	ADD	ESP,24
 	JMP	L2
-L12:
+L13:
 	PUSH	_keyfifo
 	CALL	_fifo8_get
 	MOV	EBX,EAX
@@ -186,20 +203,20 @@ L12:
 	PUSH	7
 	PUSH	16
 	PUSH	0
-	JMP	L10
-L11:
+	JMP	L11
+L12:
 	CALL	_io_stihlt
 	JMP	L2
 	GLOBAL	_wait_KBC_sendready
 _wait_KBC_sendready:
 	PUSH	EBP
 	MOV	EBP,ESP
-L14:
+L15:
 	PUSH	100
 	CALL	_io_in8
 	POP	EDX
 	AND	EAX,2
-	JNE	L14
+	JNE	L15
 	LEAVE
 	RET
 	GLOBAL	_init_keyboard
@@ -228,5 +245,50 @@ _enable_mouse:
 	PUSH	244
 	PUSH	96
 	CALL	_io_out8
+	MOV	EAX,DWORD [8+EBP]
+	MOV	BYTE [3+EAX],0
 	LEAVE
 	RET
+	GLOBAL	_mouse_decode
+_mouse_decode:
+	PUSH	EBP
+	MOV	EBP,ESP
+	PUSH	EBX
+	MOV	ECX,DWORD [8+EBP]
+	MOV	EDX,DWORD [12+EBP]
+	MOV	AL,BYTE [3+ECX]
+	TEST	AL,AL
+	JNE	L22
+	CMP	DL,-6
+	JE	L28
+L27:
+	XOR	EAX,EAX
+L21:
+	POP	EBX
+	POP	EBP
+	RET
+L28:
+	MOV	BYTE [3+ECX],1
+	JMP	L27
+L22:
+	CMP	AL,1
+	JE	L29
+	CMP	AL,2
+	JE	L30
+	CMP	AL,3
+	JE	L31
+	OR	EAX,-1
+	JMP	L21
+L31:
+	MOV	EAX,1
+	MOV	BYTE [2+ECX],DL
+	MOV	BYTE [3+ECX],1
+	JMP	L21
+L30:
+	MOV	BYTE [1+ECX],DL
+	MOV	BYTE [3+ECX],3
+	JMP	L27
+L29:
+	MOV	BYTE [ECX],DL
+	MOV	BYTE [3+ECX],2
+	JMP	L27
