@@ -3,7 +3,7 @@
 LC0:
 	.ascii "(%d, %d)\0"
 LC2:
-	.ascii "%02X %02X %02X\0"
+	.ascii "[lcr %4d %4d]\0"
 LC1:
 	.ascii "%02X\0"
 	.text
@@ -103,12 +103,12 @@ L2:
 	popl	%ebx
 	popl	%esi
 	testl	%eax, %eax
-	je	L12
+	je	L14
 	pushl	$_keyfifo
 	call	_fifo8_status
 	popl	%ecx
 	testl	%eax, %eax
-	jne	L13
+	jne	L15
 	pushl	$_mousefifo
 	call	_fifo8_status
 	popl	%edx
@@ -126,18 +126,28 @@ L2:
 	addl	$12, %esp
 	decl	%eax
 	jne	L2
-	movzbl	-490(%ebp), %eax
-	pushl	%eax
-	leal	-60(%ebp), %ebx
-	movzbl	-491(%ebp), %eax
-	pushl	%eax
-	movzbl	-492(%ebp), %eax
-	pushl	%eax
+	pushl	-484(%ebp)
+	pushl	-488(%ebp)
 	pushl	$LC2
+	leal	-60(%ebp), %ebx
 	pushl	%ebx
 	call	_sprintf
+	addl	$16, %esp
+	movl	-480(%ebp), %eax
+	testl	$1, %eax
+	je	L11
+	movb	$76, -59(%ebp)
+L11:
+	testl	$2, %eax
+	je	L12
+	movb	$82, -57(%ebp)
+L12:
+	andl	$4, %eax
+	je	L13
+	movb	$67, -58(%ebp)
+L13:
 	pushl	$31
-	pushl	$95
+	pushl	$151
 	pushl	$16
 	pushl	$32
 	pushl	$14
@@ -145,19 +155,17 @@ L2:
 	pushl	%eax
 	pushl	4088
 	call	_boxfill8
-	addl	$48, %esp
 	pushl	%ebx
 	pushl	$7
 	pushl	$16
 	pushl	$32
-L11:
 	movswl	4084,%eax
 	pushl	%eax
 	pushl	4088
 	call	_putfonts8_asc
-	addl	$24, %esp
+	addl	$52, %esp
 	jmp	L2
-L13:
+L15:
 	pushl	$_keyfifo
 	call	_fifo8_get
 	movl	%eax, %ebx
@@ -181,8 +189,13 @@ L13:
 	pushl	$7
 	pushl	$16
 	pushl	$0
-	jmp	L11
-L12:
+	movswl	4084,%eax
+	pushl	%eax
+	pushl	4088
+	call	_putfonts8_asc
+	addl	$24, %esp
+	jmp	L2
+L14:
 	call	_io_stihlt
 	jmp	L2
 	.balign 2
@@ -191,12 +204,12 @@ L12:
 _wait_KBC_sendready:
 	pushl	%ebp
 	movl	%esp, %ebp
-L15:
+L17:
 	pushl	$100
 	call	_io_in8
 	popl	%edx
 	andl	$2, %eax
-	jne	L15
+	jne	L17
 	leave
 	ret
 	.balign 2
@@ -239,45 +252,73 @@ _enable_mouse:
 _mouse_decode:
 	pushl	%ebp
 	movl	%esp, %ebp
+	pushl	%esi
 	pushl	%ebx
-	movl	8(%ebp), %ecx
-	movl	12(%ebp), %edx
-	movb	3(%ecx), %al
+	movl	8(%ebp), %edx
+	movl	12(%ebp), %ecx
+	movl	%ecx, %esi
+	movb	3(%edx), %al
 	testb	%al, %al
-	jne	L22
-	cmpb	$-6, %dl
-	je	L28
-L27:
+	jne	L24
+	cmpb	$-6, %cl
+	je	L33
+L32:
 	xorl	%eax, %eax
-L21:
+L23:
 	popl	%ebx
+	popl	%esi
 	popl	%ebp
 	ret
-L28:
-	movb	$1, 3(%ecx)
-	jmp	L27
-L22:
+L33:
+	movb	$1, 3(%edx)
+	jmp	L32
+L24:
 	cmpb	$1, %al
-	je	L29
+	je	L34
 	cmpb	$2, %al
-	je	L30
+	je	L35
 	cmpb	$3, %al
-	je	L31
+	je	L36
 	orl	$-1, %eax
-	jmp	L21
-L31:
-	movl	$1, %eax
-	movb	%dl, 2(%ecx)
-	movb	$1, 3(%ecx)
-	jmp	L21
+	jmp	L23
+L36:
+	movb	(%edx), %bl
+	andl	$255, %esi
+	movl	%ebx, %eax
+	movb	%cl, 2(%edx)
+	andl	$7, %eax
+	movl	%esi, 8(%edx)
+	movl	%eax, 12(%edx)
+	movb	%bl, %al
+	movzbl	1(%edx), %ecx
+	andl	$16, %eax
+	movl	%ecx, 4(%edx)
+	movb	$1, 3(%edx)
+	testb	%al, %al
+	je	L30
+	orl	$-256, %ecx
+	movl	%ecx, 4(%edx)
 L30:
-	movb	%dl, 1(%ecx)
-	movb	$3, 3(%ecx)
-	jmp	L27
-L29:
-	movb	%dl, (%ecx)
-	movb	$2, 3(%ecx)
-	jmp	L27
+	andl	$32, %ebx
+	testb	%bl, %bl
+	je	L31
+	orl	$-256, 8(%edx)
+L31:
+	negl	8(%edx)
+	movl	$1, %eax
+	jmp	L23
+L35:
+	movb	%cl, 1(%edx)
+	movb	$3, 3(%edx)
+	jmp	L32
+L34:
+	andl	$-56, %esi
+	movl	%esi, %eax
+	cmpb	$8, %al
+	jne	L32
+	movb	%cl, (%edx)
+	movb	$2, 3(%edx)
+	jmp	L32
 	.def	_io_in8;	.scl	2;	.type	32;	.endef
 	.def	_mouse_decode;	.scl	2;	.type	32;	.endef
 	.def	_boxfill8;	.scl	2;	.type	32;	.endef
