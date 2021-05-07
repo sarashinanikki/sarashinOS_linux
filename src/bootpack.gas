@@ -346,39 +346,6 @@ L26:
 	call	_store_cr0
 	popl	%ecx
 	jmp	L24
-	.balign 2
-.globl _memtest_sub
-	.def	_memtest_sub;	.scl	2;	.type	32;	.endef
-_memtest_sub:
-	pushl	%ebp
-	movl	%esp, %ebp
-	pushl	%esi
-	pushl	%ebx
-	movl	$1437226410, %ebx
-	movl	12(%ebp), %esi
-	movl	8(%ebp), %eax
-	cmpl	%esi, %eax
-	ja	L30
-	movl	$1437226410, %ecx
-L35:
-	movl	4092(%eax), %edx
-	cmpl	%ebx, %ecx
-	movl	%ecx, 4092(%eax)
-	jne	L37
-	decl	%ecx
-	movl	%edx, 4092(%eax)
-	addl	$4096, %eax
-	movl	%ecx, %ebx
-	cmpl	%esi, %eax
-	jbe	L35
-L30:
-	popl	%ebx
-	popl	%esi
-	popl	%ebp
-	ret
-L37:
-	movl	%edx, 4092(%eax)
-	jmp	L30
 	.def	_memtest_sub;	.scl	2;	.type	32;	.endef
 	.def	_store_cr0;	.scl	2;	.type	32;	.endef
 	.def	_load_cr0;	.scl	2;	.type	32;	.endef
