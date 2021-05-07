@@ -3,6 +3,9 @@
 #include "bootpack.h"
 #include <stdio.h>
 
+unsigned int memtest(unsigned int start, unsigned int end);
+unsigned int memtest_sub(unsigned int start, unsigned int end);
+
 void HariMain(void)
 {
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
@@ -19,6 +22,7 @@ void HariMain(void)
 	io_out8(PIC1_IMR, 0xef); /* マウスを許可(11101111) */
 
 	init_keyboard();
+	enable_mouse(&mdec);
 
 	init_palette();
 	init_screen8(binfo->vram, binfo->scrnx, binfo->scrny);
@@ -31,24 +35,25 @@ void HariMain(void)
 	sprintf(s, "(%3d, %3d)", mx, my);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
 
-	enable_mouse(&mdec);
+	i = memtest(0x00400000, 0xbfffffff) / (1024 * 1024);
+	sprintf(s, "memory %dMB", i);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
 
 	for (;;) {
 		io_cli();
 		if (fifo8_status(&keyfifo) + fifo8_status(&mousefifo) == 0) {
 			io_stihlt();
 		} else {
-			if (fifo8_status(&keyfifo)) {
+			if (fifo8_status(&keyfifo) != 0) {
 				i = fifo8_get(&keyfifo);
 				io_sti();
 				sprintf(s, "%02X", i);
-				boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 16, 15, 31);
+				boxfill8(binfo->vram, binfo->scrnx, COL8_008484,  0, 16, 15, 31);
 				putfonts8_asc(binfo->vram, binfo->scrnx, 0, 16, COL8_FFFFFF, s);
-			}
-			else if (fifo8_status(&mousefifo)) {
+			} else if (fifo8_status(&mousefifo) != 0) {
 				i = fifo8_get(&mousefifo);
 				io_sti();
-				if (mouse_decode(&mdec, i) == 1) {
+				if (mouse_decode(&mdec, i) != 0) {
 					/* データが3バイト揃ったので表示 */
 					sprintf(s, "[lcr %4d %4d]", mdec.x, mdec.y);
 					if ((mdec.btn & 0x01) != 0) {
@@ -63,7 +68,7 @@ void HariMain(void)
 					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);
 					putfonts8_asc(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
 					/* マウスカーソルの移動 */
-					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, mx, my, mx+15, my+15); /* マウスを消す */
+					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, mx, my, mx + 15, my + 15); /* マウス消す */
 					mx += mdec.x;
 					my += mdec.y;
 					if (mx < 0) {
@@ -86,4 +91,64 @@ void HariMain(void)
 			}
 		}
 	}
+}
+
+#define EFLAGS_AC_BIT		0x00040000
+#define CR0_CACHE_DISABLE	0x60000000
+
+unsigned int memtest(unsigned int start, unsigned int end)
+{
+	char flg486 = 0;
+	unsigned int eflg, cr0, i;
+
+	/* 386か、486以降なのかの確認 */
+	eflg = io_load_eflags();
+	eflg |= EFLAGS_AC_BIT; /* AC-bit = 1 */
+	io_store_eflags(eflg);
+	eflg = io_load_eflags();
+	if ((eflg & EFLAGS_AC_BIT) != 0) { /* 386ではAC=1にしても自動で0に戻ってしまう */
+		flg486 = 1;
+	}
+	eflg &= ~EFLAGS_AC_BIT; /* AC-bit = 0 */
+	io_store_eflags(eflg);
+
+	if (flg486 != 0) {
+		cr0 = load_cr0();
+		cr0 |= CR0_CACHE_DISABLE; /* キャッシュ禁止 */
+		store_cr0(cr0);
+	}
+
+	i = memtest_sub(start, end);
+
+	if (flg486 != 0) {
+		cr0 = load_cr0();
+		cr0 &= ~CR0_CACHE_DISABLE; /* キャッシュ許可 */
+		store_cr0(cr0);
+	}
+
+	return i;
+}
+
+unsigned int memtest_sub(unsigned int start, unsigned int end)
+{
+	unsigned int i, *p, old, pat0 = 0xaa55aa55, pat1 = 0x55aa55aa;
+	for (i = start; i <= end; i += 0x1000) {
+		p = (unsigned int *) (i + 0xffc);
+		old = *p;			/* いじる前の値を覚えておく */
+		*p = pat0;			/* ためしに書いてみる */
+		*p ^= 0xffffffff;	/* そしてそれを反転してみる */
+		if (*p != pat1) {	/* 反転結果になったか？ */
+			*p = old;
+			break;
+		}
+		*p ^= 0xffffffff;	/* もう一度反転してみる */
+		if (*p != pat0) {	/* 元に戻ったか？ */
+			*p = old;
+			break;
+		}
+		*p = old;			/* いじった値を元に戻す */
+		pat0++;
+		pat1 = pat0^0xffffffff;
+	}
+	return i;
 }
