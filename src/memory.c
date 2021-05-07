@@ -96,6 +96,7 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size)
 		/* 前がある */
 		if (man->free[i - 1].addr + man->free[i - 1].size == addr) {
 			/* 前のあき領域にまとめられる */
+			// free[i-1]のaddr+size = free[i-1]が持つデータの末尾のaddrが、今回解放したいaddrと一致したとき、まとめられる
 			man->free[i - 1].size += size;
 			if (i < man->frees) {
 				/* 後ろもある */
